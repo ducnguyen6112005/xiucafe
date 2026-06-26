@@ -1,0 +1,78 @@
+// ============================================================
+//  DATA LAYER — the single source of truth for everything
+//  stored in the database. Every "fact" lives here once.
+//  Change the shape of the data? You change it here, nowhere else.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for local dev (zero setup). To go to production, change
+  // provider to "postgresql" and point DATABASE_URL at a Postgres DB.
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---- A customer account ----
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  points       Int      @default(0) // current redeemable balance
+  createdAt    DateTime @default(now())
+
+  orders            Order[]
+  pointsTransactions PointsTransaction[]
+}
+
+// ---- A drink on the menu ----
+model MenuItem {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  nameVi      String? // optional Vietnamese name, e.g. "Sữa Đá Matcha"
+  description String
+  priceCents  Int // store money as integer cents — never floats
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  orderItems OrderItem[]
+}
+
+// ---- A placed order ----
+model Order {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  status       String   @default("received") // received -> making -> ready -> done
+  totalCents   Int
+  pointsEarned Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  items OrderItem[]
+}
+
+// ---- One line in an order (price is snapshotted at purchase time) ----
+model OrderItem {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+  menuItemId    String
+  menuItem      MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity      Int
+  priceCents    Int // copied from the menu item at time of order
+}
+
+// ---- Every points change, ever (audit trail) ----
+model PointsTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  delta     Int // +earned or -redeemed
+  reason    String // "order", "redeem", "signup-bonus", etc.
+  orderId   String?
+  createdAt DateTime @default(now())
+}

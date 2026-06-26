@@ -1,0 +1,43 @@
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setError(""); setBusy(true);
+    const res = await fetch("/api/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    setBusy(false);
+    if (!res.ok) { setError(data.error ?? "Could not log in."); return; }
+    window.location.href = "/account";
+  }
+
+  return (
+    <main className="auth-wrap">
+      <div className="eyebrow">Xin chào</div>
+      <h1>Welcome back.</h1>
+      <p className="muted" style={{ marginBottom: 22 }}>Log in to order and collect points.</p>
+      <div className="field">
+        <label>Email</label>
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+      </div>
+      <div className="field">
+        <label>Password</label>
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+      </div>
+      {error && <p className="error">{error}</p>}
+      <button className="btn" style={{ width: "100%" }} onClick={submit} disabled={busy}>
+        {busy ? "…" : "Log in"}
+      </button>
+      <p className="switch">New here? <Link href="/signup">Create an account</Link></p>
+    </main>
+  );
+}
